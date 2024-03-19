@@ -76,7 +76,7 @@ class Hello(Plugin):
             if e_context["context"]["isgroup"]:
                 reply.content = f"Hello, {msg.actual_user_nickname} from {msg.from_user_nickname}"
             else:
-                reply.content = f"Hello, {msg.from_user_nickname}"
+                reply.content = f"Hello,你个大傻瓜, {msg.from_user_nickname}"
             e_context["reply"] = reply
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
 
