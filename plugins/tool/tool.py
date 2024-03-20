@@ -54,7 +54,9 @@ class Tool(Plugin):
             const.OPEN_AI,
             const.CHATGPTONAZURE,
             const.LINKAI,
+            const.XUNFEI
         ):
+            logger.info('Bridge().get_bot_type("chat")')
             return
 
         content = e_context["context"].content
