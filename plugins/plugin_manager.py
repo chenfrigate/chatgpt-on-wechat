@@ -90,12 +90,14 @@ class PluginManager:
         raws = [self.plugins[name] for name in self.plugins]
         for plugin_name in os.listdir(plugins_dir):
             plugin_path = os.path.join(plugins_dir, plugin_name)
+            logger.info("plugin_path: "+plugin_path)
             if os.path.isdir(plugin_path):
                 # 判断插件是否包含同名__init__.py文件
                 main_module_path = os.path.join(plugin_path, "__init__.py")
                 if os.path.isfile(main_module_path):
                     # 导入插件
                     import_path = "plugins.{}".format(plugin_name)
+                    logger.info("plugins.{}".format(plugin_name))
                     try:
                         self.current_plugin_path = plugin_path
                         if plugin_path in self.loaded:
