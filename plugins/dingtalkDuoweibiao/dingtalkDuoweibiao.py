@@ -7,6 +7,8 @@ from channel.chat_message import ChatMessage
 from common.log import logger
 from plugins import *
 from config import conf
+import requests
+import json
 
 
 @plugins.register(
@@ -21,6 +23,7 @@ class dingtalkDuoweibiao(Plugin):
     def __init__(self):
         super().__init__()
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
+        self.handlers[Event.ON_DECORATE_REPLY] = self.on_decorate_reply
         logger.info("[dintalkDuoweibiao] inited")
         self.config = super().load_config()
 
@@ -69,18 +72,19 @@ class dingtalkDuoweibiao(Plugin):
 
         #content = e_context["context"].content
         content = e_context["context"].content[:]
-        clist = e_context["context"].content.split(maxsplit=1)
         logger.debug("[Hello] on_handle_context. content: %s" % content)
       
-        if clist[0] == "chenfrigate":
-            prompt = """请你用json格式返回以下信息，并在最前面加上【插入多维表】这个短语："""+ clist[1]
-            e_context["context"].type = ContextType.TEXT
-            msg: ChatMessage = e_context["context"]["msg"]
-            e_context["context"].content = prompt
-            e_context.action = EventAction.BREAK  # 事件结束，进入默认处理逻辑
-            if not self.config or not self.config.get("use_character_desc"):
-                e_context["context"]["generate_breaked_by"] = EventAction.BREAK
-            return
+        prompt = """请你按输出示例的格式返回输入内容，并在最前面加上【插入多维表】这个短语：
+            输出示例：{"Entry_log": {"Entry_Time": "2024年3月31日","Inputter_Name": "chen"},"Product_Price":"10000", "Product_Specifications": "A100","Product_Name": "机器", "Supplier_Name": "华为"}
+            输出示例字段说明：Entry_Time的内容是今天，Inputter_Name说明这个信息是谁提供的，Product_Price是产品价格，Product_Specifications是产品型号，Product_Name是产品名称，Supplier_Name是供应商的名称。
+            输入内容："""+ content
+        e_context["context"].type = ContextType.TEXT
+        msg: ChatMessage = e_context["context"]["msg"]
+        e_context["context"].content = prompt
+        e_context.action = EventAction.BREAK  # 事件结束，进入默认处理逻辑
+        if not self.config or not self.config.get("use_character_desc"):
+            e_context["context"]["generate_breaked_by"] = EventAction.BREAK
+        return
 
     def on_decorate_reply(self, e_context: EventContext):
         if e_context["reply"].type not in [ReplyType.TEXT]:
@@ -93,6 +97,32 @@ class dingtalkDuoweibiao(Plugin):
         reply = Reply(ReplyType.INFO, "已触发了多维表插入: \n" + content)
         e_context["reply"] = reply
         e_context.action = EventAction.CONTINUE
+        # Webhook的URL
+        webhook_url = 'https://connector.dingtalk.com/webhook/trigger/data/sync?webhookId=10295812bc61213c6a90000f'
+
+        # 要传递的参数，这里使用JSON格式
+        # 找到分隔符【插入多维表】的位置并分割字符串
+        split_index = content.find("【插入多维表】")
+        if split_index != -1:
+            after_separator = content[split_index + len("【插入多维表】"):]
+        else:
+            after_separator = content
+
+        # 将分割后的内容转换为字典
+        data = json.loads(after_separator)
+        # 将参数转换为JSON格式的字符串
+        json_data = json.dumps(data)
+        #print("json_data="+json_data)
+
+        # 发送POST请求
+        response = requests.post(webhook_url, headers={'Content-Type': 'application/json'}, data=json_data)
+
+        # 检查请求是否成功
+        if response.status_code == 200:
+            print('Webhook triggered successfully.')
+        else:
+            print('Failed to trigger webhook.')
+
         return
             
     def get_help_text(self, **kwargs):
